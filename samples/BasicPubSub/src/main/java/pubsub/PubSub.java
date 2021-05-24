@@ -35,7 +35,7 @@ class PubSub {
     static String certPath;
     static String keyPath;
     static String endpoint;
-    static String topic = "test/topic";
+    static String topic = "control/D_randal10_T_7707317f-923a-4e33-bdb0-65c522c9fe01/messages";
     static String message = "Hello World!";
     static int    messagesToPublish = 10;
     static boolean showHelp = false;
@@ -249,7 +249,9 @@ class PubSub {
                 .withEndpoint(endpoint)
                 .withPort((short)port)
                 .withCleanSession(true)
-                .withProtocolOperationTimeoutMs(60000);
+                .withPingTimeoutMs(5000)
+                .withKeepAliveMs(10000);
+                //.withProtocolOperationTimeoutMs(60000);
 
             HttpProxyOptions proxyOptions = null;
             if (proxyHost != null && proxyPort > 0) {
@@ -288,12 +290,14 @@ class PubSub {
 
             try(MqttClientConnection connection = builder.build()) {
 
-                CompletableFuture<Boolean> connected = connection.connect();
+                CompletableFuture<Boolean> connected;
                 try {
+                    connected = connection.connect();
                     boolean sessionPresent = connected.get();
                     System.out.println("Connected to " + (!sessionPresent ? "new" : "existing") + " session!");
                 } catch (Exception ex) {
-                    throw new RuntimeException("Exception occurred during connect", ex);
+                    System.err.println("Exception occurred during connect");
+                    System.err.println(ex);
                 }
 
                 CountDownLatch countDownLatch = new CountDownLatch(messagesToPublish);
@@ -305,18 +309,22 @@ class PubSub {
                 });
 
                 subscribed.get();
+                Thread.sleep(120000);
+                // CompletableFuture<Void> disconnected = connection.disconnect();
+                // disconnected.get();
 
-                int count = 0;
-                while (count++ < messagesToPublish) {
-                    CompletableFuture<Integer> published = connection.publish(new MqttMessage(topic, message.getBytes(), QualityOfService.AT_LEAST_ONCE, false));
-                    published.get();
-                    Thread.sleep(1000);
-                }
-                
-                countDownLatch.await();
 
-                CompletableFuture<Void> disconnected = connection.disconnect();
-                disconnected.get();
+//                int count = 0;
+//                while (count++ < messagesToPublish) {
+//                    CompletableFuture<Integer> published = connection.publish(new MqttMessage(topic, message.getBytes(), QualityOfService.AT_LEAST_ONCE, false));
+//                    published.get();
+//                    Thread.sleep(1000);
+//                }
+//
+//                countDownLatch.await();
+//
+//                CompletableFuture<Void> disconnected = connection.disconnect();
+//                disconnected.get();
             }
         } catch (CrtRuntimeException | InterruptedException | ExecutionException ex) {
             System.out.println("Exception encountered: " + ex.toString());
